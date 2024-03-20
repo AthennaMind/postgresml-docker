@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  pgml:
+    image: gdarakov/pgml:2.8.2
+    hostname: pgml
+    container_name: pgml
+    ports:
+      - "5432:5432"
+    command: |
+      -c config_file=/etc/postgresql/15/postgresql.conf
+    healthcheck:
+      test: "su - ${PG_USER} -c pg_isready"
+      interval: 30s
+      timeout: 2s
+      retries: 3
+      start_period: 5s
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASS}
+      POSTGRES_DB: ${INIT_DB}
+      PGDATA: "/var/lib/postgresql/data"
+      TS_TUNE_MEMORY: 16GB
+      TS_TUNE_NUM_CPUS: 8
+      TS_TUNE_MAX_CONNS: 100
+      TIMESCALEDB_TELEMETRY: off
+      TZ: "UTC"
+    volumes:
+      - pgml-data:/var/lib/postgresql
+      - ./configs/pgml/postgresql.conf:/etc/postgresql/15/postgresql.conf
+      - ./configs/pgml/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./dicts/bulgarian/bulgarian.affix:/usr/share/postgresql/15/tsearch_data/bulgarian.affix
+      - ./dicts/bulgarian/bulgarian.dict:/usr/share/postgresql/15/tsearch_data/bulgarian.dict
+      - ./dicts/bulgarian/bulgarian.stop:/usr/share/postgresql/15/tsearch_data/bulgarian.stop
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${NVIDIA_VISIBLE_DEVICES}
+              capabilities: [gpu]
+
+  pgml-dashboard:
+    image: gdarakov/pgml-dashboard:2.8.2
+    hostname: pgml-dashboard
+    container_name: pgml-dashboard
+    ports:
+      - "8000:8000"
+    depends_on:
+      pgml:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${PG_USER}:${PG_PASS}@pgml:5432/${INIT_DB}
+      DASHBOARD_STATIC_DIRECTORY: /usr/share/pgml-dashboard/dashboard-static
+      DASHBOARD_CMS_DIRECTORY: /usr/share/pgml-cms
+      SEARCH_INDEX_DIRECTORY: /var/lib/pgml-dashboard/search-index
+      ROCKET_SECRET_KEY: 61a0e20717cf49956c44653f925e186d37c0109d237e9ce9f75d9619667e6639
+      ROCKET_ADDRESS: 0.0.0.0
+      RUST_LOG: warning
+
+  pgadmin:
+    container_name: pgadmin
+    hostname: pgadmin
+    image: "dpage/pgadmin4:8.4"
+    logging:
+      driver: none
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    ports:
+      - "8001:80"
+    depends_on:
+      pgml:
+        condition: service_healthy
+    entrypoint: /bin/sh -c "chmod 600 /pgpass; /entrypoint.sh;"
+    restart: always
+    user: root
+    configs:
+      - source: servers.json
+        target: /pgadmin4/servers.json
+      - source: pgpass
+        target: /pgpass
+
+configs:
+  pgpass:
+    content: pgml:5432:*:${PG_USER}:${PG_PASS}
+  servers.json:
+    content: |
+      {"Servers": {"1": {
+        "Group": "Servers",
+        "Name": "PostgresML",
+        "Host": "pgml",
+        "Port": 5432,
+        "MaintenanceDB": "${INIT_DB}",
+        "Username": "${PG_USER}",
+        "PassFile": "/pgpass",
+        "SSLMode": "prefer"
+      }}}
+volumes:
+  pgml-data:
+  pgadmin:
