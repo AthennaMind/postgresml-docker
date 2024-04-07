@@ -1,6 +1,6 @@
 # postgresml-docker
 
-Run [PostgresML](https://postgresml.org), [TimescaleDB]() and [pgAdmin](https://www.pgadmin.org) in one command. This repository contains a `docker-compose` file to run a PostgresML database with TimescaleDB and a PgAdmin instance. The stack is configured to use the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) to enable GPU support for the PostgresML database. Additionally there are bulgarian dictionaries that provide full text search support for the Bulgarian language that can be spicy combined with the functionality that PostgresML provides to achieve wonderful stuff.
+Run [PostgresML](https://postgresml.org), [TimescaleDB](https://www.timescale.com) and [pgAdmin](https://www.pgadmin.org) in one command. This repository contains a `docker-compose` file to run a PostgresML database with TimescaleDB and a PgAdmin instance. The stack is configured to use the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) to enable GPU support for the PostgresML database. Additionally there are bulgarian dictionaries that provide full text search support for the Bulgarian language that can be spicy combined with the functionality that PostgresML provides to achieve wonderful stuff.
 
 **`TimescaleDB currently is not included in the stack. It will be added in the future.`**
 
